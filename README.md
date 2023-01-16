@@ -1,4 +1,4 @@
-CSE4083 Computer Graphics Homework3 webgl. 
+CSE4083 Computer Graphics Homework3 WebGL. 
 A different image to each face of a cube. 
 CubeImage.html and CubeImage2.html two different solution for homework.\
 Created by Ramazan Karkin and Rumeysa Ulusoy.\
