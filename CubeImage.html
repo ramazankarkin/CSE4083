@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+  <body>
+    <canvas
+      width="500"
+      height="800"
+      id="myCanvas"
+      style="border: 1px solid #000000"
+    ></canvas>
+
+    <script src="gl-matrix.js"></script>
+
+    <script>
+      const canvas = document.getElementById("myCanvas");
+      const gl = canvas.getContext("webgl");
+      gl.enable(gl.DEPTH_TEST);
+	 gl.enable(gl.CULL_FACE);
+	 gl.frontFace(gl.CCW);
+	 gl.cullFace(gl.BACK);
+
+      // create a vertex buffer
+      const vertexBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+
+      // define the vertices of the cube
+      const vertices = new Float32Array([
+        // Top
+        -1.0, 1.0, -1.0, 0, 0, -1.0, 1.0, 1.0, 0, 1, 1.0, 1.0, 1.0, 1, 1, 1.0,
+        1.0, -1.0, 1, 0,
+
+        // Left
+        -1.0, 1.0, 1.0, 0, 0, -1.0, -1.0, 1.0, 1, 0, -1.0, -1.0, -1.0, 1, 1,
+        -1.0, 1.0, -1.0, 0, 1,
+
+        // Right
+        1.0, 1.0, 1.0, 1, 1, 1.0, -1.0, 1.0, 0, 1, 1.0, -1.0, -1.0, 0, 0, 1.0,
+        1.0, -1.0, 1, 0,
+
+        // Front
+        1.0, 1.0, 1.0, 1, 1, 1.0, -1.0, 1.0, 1, 0, -1.0, -1.0, 1.0, 0, 0, -1.0,
+        1.0, 1.0, 0, 1,
+
+        // Back
+        1.0, 1.0, -1.0, 0, 0, 1.0, -1.0, -1.0, 0, 1, -1.0, -1.0, -1.0, 1, 1,
+        -1.0, 1.0, -1.0, 1, 0,
+
+        // Bottom
+        -1.0, -1.0, -1.0, 1, 1, -1.0, -1.0, 1.0, 1, 0, 1.0, -1.0, 1.0, 0, 0,
+        1.0, -1.0, -1.0, 0, 1,
+      ]);
+      gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+      // create a index buffer
+      const indexBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+
+      // define the indices of the cube
+      const indices = new Uint16Array([
+        // Top
+        0, 1, 2, 0, 2, 3,
+
+        // Left
+        5, 4, 6, 6, 4, 7,
+
+        // Right
+        8, 9, 10, 8, 10, 11,
+
+        // Front
+        13, 12, 14, 15, 14, 12,
+
+        // Back
+        16, 17, 18, 16, 18, 19,
+
+        // Bottom
+        21, 20, 22, 22, 20, 23,
+      ]);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+      const faceImages = [
+        new Image(),
+        new Image(),
+        new Image(),
+        new Image(),
+        new Image(),
+        new Image(),
+      ];
+      faceImages[0].src = 'Lactuca_alpina_5.jpg';
+      faceImages[1].src = 'Lactuca_alpina_3.jpg';
+      faceImages[2].src = 'Lactuca_alpina_1.jpg';
+      faceImages[3].src = 'Lactuca_alpina_1.jpg';
+      faceImages[4].src = 'Lactuca_alpina_3.jpg';
+      faceImages[5].src = 'Lactuca_alpina_5.jpg';
+      // create texture for each face
+      const textures = [];
+      for (let i = 0; i < 6; i++) {
+        textures[i] = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, textures[i]);
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          faceImages[i]
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      }
+
+      for (let i = 0; i < faceImages.length; i++) {
+        faceImages[i].onload = function () {
+          // define the texture
+          const texture = gl[`TEXTURE${i + 1}`];
+          gl.bindTexture(gl.TEXTURE_2D, texture);
+          gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            faceImages[i]
+          );
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+          gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        };
+      }
+
+      // create a vertex shader
+      const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+      gl.shaderSource(
+        vertexShader,
+        `
+          attribute vec3 aVertexPosition;
+          attribute vec2 aTextureCoord;
+
+          uniform mat4 uMVMatrix;
+          uniform mat4 uPMatrix;
+
+          varying highp vec2 vTextureCoord;
+
+          void main(void) {
+              gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+              vTextureCoord = aTextureCoord;
+          }
+      `
+      );
+      gl.compileShader(vertexShader);
+
+      // create a fragment shader
+      const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(
+        fragmentShader,
+        `
+          precision mediump float;
+
+          varying highp vec2 vTextureCoord;
+
+          uniform sampler2D uSampler;
+
+          void main(void) {
+              gl_FragColor = texture2D(uSampler, vTextureCoord);
+          }
+      `
+      );
+      gl.compileShader(fragmentShader);
+
+      // create a shader program
+      const shaderProgram = gl.createProgram();
+      gl.attachShader(shaderProgram, vertexShader);
+      gl.attachShader(shaderProgram, fragmentShader);
+      gl.linkProgram(shaderProgram);
+      gl.useProgram(shaderProgram);
+
+      // set the vertex attributes
+      const vertexPositionAttribute = gl.getAttribLocation(
+        shaderProgram,
+        "aVertexPosition"
+      );
+      gl.enableVertexAttribArray(vertexPositionAttribute);
+      gl.vertexAttribPointer(
+        vertexPositionAttribute,
+        3,
+        gl.FLOAT,
+        false,
+        5 * Float32Array.BYTES_PER_ELEMENT,
+        0
+      );
+
+      const textureCoordAttribute = gl.getAttribLocation(
+        shaderProgram,
+        "aTextureCoord"
+      );
+      gl.enableVertexAttribArray(textureCoordAttribute);
+      gl.vertexAttribPointer(
+        textureCoordAttribute,
+        2,
+        gl.FLOAT,
+        false,
+        5 * Float32Array.BYTES_PER_ELEMENT,
+        3 * Float32Array.BYTES_PER_ELEMENT
+      );
+
+      // set the uniforms
+      const pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
+      const mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+      const samplerUniform = gl.getUniformLocation(shaderProgram, "uSampler");
+
+      // create the perspective matrix
+      const pMatrix = mat4.create();
+      mat4.perspective(pMatrix, 45, canvas.width / canvas.height, 0.1, 100.0);
+      gl.uniformMatrix4fv(pMatrixUniform, false, pMatrix);
+
+      // create the model-view matrix
+      const mvMatrix = mat4.create();
+      mat4.translate(mvMatrix, mvMatrix, [0, 0, -5]);
+      mat4.lookAt(mvMatrix, [0, 0, -5], [0, 0, 0], [0, 1, 0]);
+
+
+
+      function draw() {
+        mat4.rotateX(mvMatrix, mvMatrix, 0.01);
+        mat4.rotateY(mvMatrix, mvMatrix, 0.01);
+        gl.clearColor(0.75, 0.85, 0.8, 1.0);
+        gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);  //clear screen
+
+        gl.uniformMatrix4fv(mvMatrixUniform, false, mvMatrix);
+        for (let i = 0; i < 6; i++) {
+          gl.activeTexture(gl.TEXTURE0);
+          gl.bindTexture(gl.TEXTURE_2D, textures[i]);
+          gl.uniform1i(samplerUniform, 0);
+          gl.drawElements(
+            gl.TRIANGLES,
+            6,
+            gl.UNSIGNED_SHORT,
+            i * 6 * Uint16Array.BYTES_PER_ELEMENT
+          );
+        }
+        requestAnimationFrame(draw);
+      }
+      // draw the cube
+
+      draw();
+    </script>
+  </body>
+</html>

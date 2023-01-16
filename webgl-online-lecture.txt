@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<body>
+<canvas width = "500" height = "800" id = "my_Canvas" style ="border: 1px solid #000000;"></canvas>
+
+<script>
+//CANVAS SETUP
+var canvas = document.getElementById('my_Canvas');
+var gl = canvas.getContext(' experimental-webgl');
+
+//DATA
+var vertices = [ -0.8, 0.5, -0.5, -0.5, 0.0, -0.5,]; 
+var vertex_buffer = gl.createBuffer(); //opens an area in gpu's ram 
+gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer); 
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW); 
+gl.bindBuffer(gl.ARRAY_BUFFER, NULL); 
+// VERTEX SHADER 
+var vertCode =  'attribute vec2 coordinates;'+'void main(void) {' + 'gl_Position = vec4(coordinates, 0.0, 1.0);'+'}';
+var vertShader = gl.createShader(gl.VERTEX_SHADER);
+gl.shaderSource(vertShader, vertCode); 
+gl.compileShader(vertShader);
+ 
+//TRIANGLE SETUP (not programable, hence no "triangle setup shader")
+
+//FRAGMENT SHADER 
+var fragCode = 'void main(void) {' + 'gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);' + '}'; 
+var fragShader = gl.createShader(gl.FRAGMENT_SHADER); 
+gl.shaderSource(fragShader, fragCode); 
+gl.compileShader(fragShader);
+ 
+//FORM THE PROGRAM 
+var shaderProgram = gl.createProgram(); 
+gl.attachShader(shaderProgram, vertShader);
+gl.attachShader(shaderProgram, fragShader);
+gl.linkShader(shaderProgram);
+
+gl.useProgram(shaderProgram);
+
+//ASSOCIATE DATA WITH PROGRAM 
+gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer); 
+var coord = gl.getAttribLocation(shaderProgram, "coordinates"); 
+gl.vertexAttribPointer(coord, 2, gl.FLOAT, false, 0, 0); 
+gl.enableVertexAttribArray(coord);
+ 
+//DRAW 
+gl.clearColor(0.9, 0.1, 0.1, 1.0); 
+gl.enable(gl.DEPTH_TEST); 
+gl.clear(gl.COLOR_BUFFER_BIT); 
+gl.viewport(0,0, canvas.width, canvas.height);
+gl.drawArrays(gl.TRIANGLES,0,3);   
+
+
+</script>
+</body>
+</html>

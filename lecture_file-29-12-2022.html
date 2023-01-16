@@ -1,0 +1,230 @@
+<!doctype html>
+<html>
+   <body>
+      <canvas width = "500" height = "800" id = "my_Canvas" style ="border: 1px solid #000000;"></canvas>
+      <script src="gl-matrix.js"></script> 
+		
+      <script>
+	/////////////////////////////////////////////////////////
+	// Prepare canvas
+	//////////////////////////////////////////////////////////// 
+
+         var canvas = document.getElementById('my_Canvas');
+         var gl = canvas.getContext('experimental-webgl');
+
+	////////////////////////////////////////////
+	// Create DATA
+	////////////////////////////////////////////
+	var vertices = 
+	[       // X, Y, Z           R, G, B
+		// Top
+		-1.0, 1.0, -1.0,   0.5, 0.5, 0.5,
+		-1.0, 1.0, 1.0,    0.5, 0.5, 0.5,
+		1.0, 1.0, 1.0,     0.5, 0.5, 0.5,
+		1.0, 1.0, -1.0,    0.5, 0.5, 0.5,
+
+		// Left
+		-1.0, 1.0, 1.0,    0.75, 0.25, 0.5,
+		-1.0, -1.0, 1.0,   0.75, 0.25, 0.5,
+		-1.0, -1.0, -1.0,  0.75, 0.25, 0.5,
+		-1.0, 1.0, -1.0,   0.75, 0.25, 0.5,
+
+		// Right
+		1.0, 1.0, 1.0,    0.25, 0.25, 0.75,
+		1.0, -1.0, 1.0,   0.25, 0.25, 0.75,
+		1.0, -1.0, -1.0,  0.25, 0.25, 0.75,
+		1.0, 1.0, -1.0,   0.25, 0.25, 0.75,
+
+		// Front
+		1.0, 1.0, 1.0,    1.0, 0.0, 0.15,
+		1.0, -1.0, 1.0,    1.0, 0.0, 0.15,
+		-1.0, -1.0, 1.0,    1.0, 0.0, 0.15,
+		-1.0, 1.0, 1.0,    1.0, 0.0, 0.15,
+
+		// Back
+		1.0, 1.0, -1.0,    0.0, 1.0, 0.15,
+		1.0, -1.0, -1.0,    0.0, 1.0, 0.15,
+		-1.0, -1.0, -1.0,    0.0, 1.0, 0.15,
+		-1.0, 1.0, -1.0,    0.0, 1.0, 0.15,
+
+		// Bottom
+		-1.0, -1.0, -1.0,   0.5, 0.5, 1.0,
+		-1.0, -1.0, 1.0,    0.5, 0.5, 1.0,
+		1.0, -1.0, 1.0,     0.5, 0.5, 1.0,
+		1.0, -1.0, -1.0,    0.5, 0.5, 1.0,
+	];
+
+	var indices =
+	[
+		// Top
+		0, 1, 2,
+		0, 2, 3,
+
+		// Left
+		5, 4, 6,
+		6, 4, 7,
+
+		// Right
+		8, 9, 10,
+		8, 10, 11,
+
+		// Front
+		13, 12, 14,
+		15, 14, 12,
+
+		// Back
+		16, 17, 18,
+		16, 18, 19,
+
+		// Bottom
+		21, 20, 22,
+		22, 20, 23
+	];
+
+         // Create a new vertex buffer object copy vertices into it
+         var vertex_buffer = gl.createBuffer();
+         gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+ 
+         // Create a new index buffer object copy indices into it
+         var index_buffer = gl.createBuffer();
+         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, index_buffer);
+	 gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+
+	/////////////////////////////////////////////////////////
+	// Create shaders
+	//////////////////////////////////////////////////////////// 
+
+         // Vertex shader source code
+         var vertCode =
+		[
+			'precision mediump float;',
+			'',
+			'attribute vec3 vertPosition;',  //inputs to vertex shader that change per vertex
+			'attribute vec3 vertColor;',
+			'varying vec3 fragColor;',      //output per vertex
+                        'uniform mat4 mWorld;',   //inputs to vertex shader that stays the same for all vertices
+                        'uniform mat4 mView;',
+                        'uniform mat4 mProj;',
+			'',
+			'void main()',
+			'{',
+			'  fragColor = vertColor;',
+			'  gl_Position = mProj * mView * mWorld * vec4(vertPosition, 1.0);',
+			'}'
+			].join('\n');
+
+
+         var vertShader = gl.createShader(gl.VERTEX_SHADER);
+         gl.shaderSource(vertShader, vertCode);
+         gl.compileShader(vertShader);
+
+         //Fragment shader source code
+         var fragCode = 
+		[
+			'precision mediump float;',
+			'',
+			'varying vec3 fragColor;',
+			'void main()',
+			'{',
+			'  gl_FragColor = vec4(fragColor, 1.0);',
+			'}'
+		].join('\n');
+
+
+         var fragShader = gl.createShader(gl.FRAGMENT_SHADER);
+         gl.shaderSource(fragShader, fragCode);
+         gl.compileShader(fragShader);
+
+
+         var shaderProgram = gl.createProgram();
+         gl.attachShader(shaderProgram, vertShader); 
+         gl.attachShader(shaderProgram, fragShader);
+         gl.linkProgram(shaderProgram);
+
+ 
+	////////////////////////////////////////////
+	// LINK DATA AND SHADERS
+	////////////////////////////////////////////
+
+         gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
+
+
+         //Get the attribute location
+	 var positionAttribLocation = gl.getAttribLocation(shaderProgram, 'vertPosition');
+	 var colorAttribLocation = gl.getAttribLocation(shaderProgram, 'vertColor');
+
+         //point an attribute to the currently bound VBO
+	 gl.vertexAttribPointer(
+		positionAttribLocation, // Attribute location
+		3, // Number of elements per attribute
+		gl.FLOAT, // Type of elements
+		gl.FALSE,
+		6 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
+		0 // Offset from the beginning of a single vertex to this attribute
+	 );
+	 gl.vertexAttribPointer(
+		colorAttribLocation, // Attribute location
+		3, // Number of elements per attribute
+		gl.FLOAT, // Type of elements
+		gl.FALSE,
+		6 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
+		3 * Float32Array.BYTES_PER_ELEMENT // Offset from the beginning of a single vertex to this attribute
+	 );
+
+         //Enable the attribute
+	 gl.enableVertexAttribArray(positionAttribLocation);
+	 gl.enableVertexAttribArray(colorAttribLocation);
+
+ 	////////////////////////////////////////////
+	// DRAW
+	////////////////////////////////////////////
+         gl.useProgram(shaderProgram);
+
+         //locations in gpu memory
+	 var matWorldUniformLocation = gl.getUniformLocation(shaderProgram, 'mWorld');
+	 var matViewUniformLocation  = gl.getUniformLocation(shaderProgram, 'mView');
+	 var matProjUniformLocation  = gl.getUniformLocation(shaderProgram, 'mProj');
+
+ 	 var worldMatrix = new Float32Array(16);
+	 var viewMatrix = new Float32Array(16);
+	 var projMatrix = new Float32Array(16);
+	 mat4.identity(worldMatrix);
+         //setup a camera
+	 mat4.lookAt(viewMatrix, [0, 0, -8], [0, 0, 0], [0, 1, 0]); //look from, look to, where is up
+         //viewport definition: 45 degrees field of view, aspect ratio, closest plane, furthest plane.
+	 mat4.perspective(projMatrix, glMatrix.toRadian(45), canvas.clientWidth / canvas.clientHeight, 0.1, 1000.0)
+
+	 gl.uniformMatrix4fv(matWorldUniformLocation, gl.FALSE, worldMatrix);  //if gl.TRUE, matrix is transposed
+	 gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
+	 gl.uniformMatrix4fv(matProjUniformLocation, gl.FALSE, projMatrix);
+
+	 var xRotationMatrix = new Float32Array(16);
+	 var yRotationMatrix = new Float32Array(16);
+
+	////////////////////////////////////////////
+	// MAIN RENDER LOOP
+	////////////////////////////////////////////
+	var identityMatrix = new Float32Array(16);
+	mat4.identity(identityMatrix);
+	var angle = 0;
+
+        //function to be drawn in each animation frame
+	var loop = function () {
+		angle = performance.now() / 1000 / 6 * 2 * Math.PI;  //get number of miliseconds from the srart
+                mat4.rotate(yRotationMatrix, identityMatrix, angle, [0, 1, 0]); //out mat, in mat, axis, angle
+		gl.uniformMatrix4fv(matWorldUniformLocation, gl.FALSE, yRotationMatrix); //update uniform matrix.
+
+		gl.clearColor(0.75, 0.85, 0.8, 1.0);
+		gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);  //clear screen
+		gl.drawElements(gl.TRIANGLES, indices.length, gl.UNSIGNED_SHORT, 0); //draws using index buffer
+
+		requestAnimationFrame(loop);
+	};
+	requestAnimationFrame(loop);  
+
+
+      </script>
+   </body>
+</html>
